@@ -166,6 +166,11 @@ export function SignupFormNew() {
   const [hasEditedFullName, setHasEditedFullName] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [lastPaymentStatus, setLastPaymentStatus] = useState<"yes" | "no" | null>(null)
+  const paymentProofTemporarilyDisabled = selectedRole === "chair" || selectedRole === "admin"
+
+  const [chairCvFile, setChairCvFile] = useState<File | null>(null)
+  const [chairCvError, setChairCvError] = useState<string | null>(null)
+  const chairCvInputRef = useRef<HTMLInputElement | null>(null)
 
   const [delegateData, setDelegateData] = useState<DelegateFormState>(createInitialDelegateData)
 
@@ -189,6 +194,18 @@ export function SignupFormNew() {
       paymentProofFile.name.toLowerCase().endsWith(".pdf"))
 
   const paymentProofIsImage = !!paymentProofFile && paymentProofFile.type.startsWith("image/")
+
+  useEffect(() => {
+    if (paymentProofTemporarilyDisabled) {
+      setHasPaid("no")
+      resetPaymentProof()
+      setPaymentFullName("")
+      setErrors((prev) => {
+        const { paymentFullName, paymentProof, paymentStatus, ...rest } = prev
+        return rest
+      })
+    }
+  }, [paymentProofTemporarilyDisabled])
 
   useEffect(() => {
     const combinedName = [formData.firstName, formData.lastName]
@@ -243,6 +260,12 @@ export function SignupFormNew() {
   }
 
   const handlePaymentProofSelect = (file: File) => {
+    if (paymentProofTemporarilyDisabled) {
+      toast.info(
+        "Payment proof uploads for chair and admin applicants are disabled until selections are announced.",
+      )
+      return
+    }
     const isImage = file.type.startsWith("image/")
     const isPdf =
       file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
@@ -264,6 +287,26 @@ export function SignupFormNew() {
     clearError("paymentProof")
   }
 
+  const handleChairCvSelect = (file: File) => {
+    const allowed =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf") ||
+      file.name.toLowerCase().endsWith(".doc") ||
+      file.name.toLowerCase().endsWith(".docx")
+
+    if (!allowed) {
+      setChairCvError("Please upload a PDF or Word document for your CV.")
+      return
+    }
+
+    setChairCvFile(file)
+    setChairCvError(null)
+    setErrors((prev) => {
+      const { chairCv, ...rest } = prev
+      return rest
+    })
+  }
+
   const resetPaymentProof = () => {
     if (paymentProofPreview) {
       URL.revokeObjectURL(paymentProofPreview)
@@ -271,6 +314,18 @@ export function SignupFormNew() {
     setPaymentProofFile(null)
     setPaymentProofPreview(null)
     setIsDragActive(false)
+  }
+
+  const resetChairCv = () => {
+    setChairCvFile(null)
+    setChairCvError(null)
+    if (chairCvInputRef.current) {
+      chairCvInputRef.current.value = ""
+    }
+    setErrors((prev) => {
+      const { chairCv, ...rest } = prev
+      return rest
+    })
   }
 
   const resetFullRegistrationForm = () => {
@@ -284,6 +339,7 @@ export function SignupFormNew() {
     setPaymentFullName("")
     setHasEditedFullName(false)
     resetPaymentProof()
+    resetChairCv()
     setErrors({})
     setReferralFeedback({})
   }
@@ -593,9 +649,17 @@ export function SignupFormNew() {
           if (!chairData.availability.trim()) {
             newErrors.chairAvailability = "Please confirm your availability and communication approach"
           } else if (chairData.availability.length < 50) {
-            newErrors.chairAvailability =
+                        newErrors.chairAvailability =
               "Please provide at least 50 characters for your availability and communication"
           }
+        }
+
+        if (!chairCvFile) {
+          newErrors.chairCv = "Please upload your CV before submitting your chair application"
+        }
+
+        if (chairCvError) {
+          newErrors.chairCv = chairCvError
         }
       }
 
@@ -611,17 +675,19 @@ export function SignupFormNew() {
         }
       }
 
-      if (!hasPaid) {
-        newErrors.paymentStatus = "Please let us know if you've already paid"
-      }
-
-      if (hasPaid === "yes") {
-        if (!paymentFullName.trim()) {
-          newErrors.paymentFullName = "Please enter the payer's full name"
+      if (!paymentProofTemporarilyDisabled) {
+        if (!hasPaid) {
+          newErrors.paymentStatus = "Please let us know if you've already paid"
         }
 
-        if (!paymentProofFile) {
-          newErrors.paymentProof = "Please upload proof of payment before submitting"
+        if (hasPaid === "yes") {
+          if (!paymentFullName.trim()) {
+            newErrors.paymentFullName = "Please enter the payer's full name"
+          }
+
+          if (!paymentProofFile) {
+            newErrors.paymentProof = "Please upload proof of payment before submitting"
+          }
         }
       }
 
@@ -648,8 +714,13 @@ export function SignupFormNew() {
       setIsSubmitting(true)
 
       let paymentProofDataUrl: string | null = null
-      if (paymentProofFile) {
+      if (!paymentProofTemporarilyDisabled && paymentProofFile) {
         paymentProofDataUrl = await fileToDataURL(paymentProofFile)
+      }
+
+      let chairCvDataUrl: string | null = null
+      if (selectedRole === "chair" && chairCvFile) {
+        chairCvDataUrl = await fileToDataURL(chairCvFile)
       }
 
       const sanitizedDelegateData = selectedRole === "delegate" ? { ...delegateData } : null
@@ -665,15 +736,23 @@ export function SignupFormNew() {
         chairData: selectedRole === "chair" ? chairData : null,
         adminData: selectedRole === "admin" ? adminData : null,
         referralCodes: sanitizedReferralCodes,
-        paymentStatus: hasPaid,
+        paymentStatus: paymentProofTemporarilyDisabled ? "no" : hasPaid,
         paymentConfirmation:
-          hasPaid === "yes" && paymentProofDataUrl && selectedRole
+          !paymentProofTemporarilyDisabled && hasPaid === "yes" && paymentProofDataUrl && selectedRole
             ? {
                 fullName: paymentFullName.trim(),
                 role: selectedRole,
                 fileName: paymentProofFile?.name ?? "payment-proof",
                 mimeType: paymentProofFile?.type ?? "application/octet-stream",
                 dataUrl: paymentProofDataUrl,
+              }
+            : null,
+        chairCv:
+          selectedRole === "chair" && chairCvFile && chairCvDataUrl
+            ? {
+                fileName: chairCvFile.name,
+                mimeType: chairCvFile.type || "application/pdf",
+                dataUrl: chairCvDataUrl,
               }
             : null,
       }
@@ -695,8 +774,9 @@ export function SignupFormNew() {
         setShowSuccessModal(true)
 
         toast.success(`Registration Successful!`, {
-          description:
-            hasPaid === "yes"
+          description: paymentProofTemporarilyDisabled
+            ? `Your ${selectedRole} application has been submitted. Payment will open after selections are announced; please wait until you're confirmed before paying or uploading receipts.`
+            : hasPaid === "yes"
               ? `Your ${selectedRole} application and payment confirmation have been submitted successfully.`
               : hasPaid === "no"
                 ? `Your ${selectedRole} application has been submitted. Please remember to complete payment and upload proof later.`
@@ -874,6 +954,8 @@ export function SignupFormNew() {
     },
   ]
 
+  const lastSubmittedIsLeadership = lastSubmittedRole === "chair" || lastSubmittedRole === "admin"
+
   const successModal = (
     <Dialog
       open={showSuccessModal}
@@ -896,32 +978,53 @@ export function SignupFormNew() {
             </p>
 
             <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
-              <p className="font-medium text-green-900">Next steps: payment & confirmation</p>
-              <p className="text-green-800">Fee: {roleCards.find((r) => r.role === lastSubmittedRole)?.price ?? "—"}</p>
-              <p className="text-green-800">
-                {lastPaymentStatus === "yes"
-                  ? "Thanks for confirming your payment. Our finance team will verify your receipt within two business days."
-                  : lastPaymentStatus === "no"
-                    ? hasStripePaymentLink
-                      ? "You still need to complete your payment. Use the secure Stripe checkout link below or follow the instructions in your confirmation email."
-                      : "You still need to complete your payment. Follow the instructions in your confirmation email to finalize it."
-                    : hasStripePaymentLink
-                      ? "Use the secure Stripe checkout link below to complete your payment."
-                      : "You'll receive a confirmation email with payment instructions shortly."}
-              </p>
-              <p className="text-green-800">
-                {lastPaymentStatus === "no" ? (
-                  <>
-                    When you have your receipt, upload it on the{" "}
-                    <Link href="/proof-of-payment" className="font-semibold text-[#B22222] underline-offset-4 hover:underline">
-                      Proof of Payment page
-                    </Link>{" "}
-                    so we can verify your registration without delay.
-                  </>
-                ) : (
-                  "Keep a copy of your payment confirmation for your records."
-                )}
-              </p>
+              {lastSubmittedIsLeadership ? (
+                <>
+                  <p className="font-medium text-green-900">Next steps</p>
+                  <p className="text-green-800">
+                    We will review all {lastSubmittedRole === "chair" ? "chair" : "admin"} applications after the deadline.{' '}
+                    {lastSubmittedRole === "chair"
+                      ? "Shortlisted chairs will be invited to interviews before final selections are made."
+                      : "Admins will be contacted regarding placement and onboarding details once selections are finalized."}
+                  </p>
+                  <p className="text-green-800">
+                    Payment instructions will only be shared with selected {lastSubmittedRole === "chair" ? "chairs" : "admins"},
+                    so no fees are required right now.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-green-900">Next steps: payment & confirmation</p>
+                  <p className="text-green-800">Fee: {roleCards.find((r) => r.role === lastSubmittedRole)?.price ?? "—"}</p>
+                  <p className="text-green-800">
+                    {lastPaymentStatus === "yes"
+                      ? "Thanks for confirming your payment. Our finance team will verify your receipt within two business days."
+                      : lastPaymentStatus === "no"
+                        ? hasStripePaymentLink
+                          ? "You still need to complete your payment. Use the secure Stripe checkout link below or follow the instructions in your confirmation email."
+                          : "You still need to complete your payment. Follow the instructions in your confirmation email to finalize it."
+                        : hasStripePaymentLink
+                          ? "Use the secure Stripe checkout link below to complete your payment."
+                          : "You'll receive a confirmation email with payment instructions shortly."}
+                  </p>
+                  <p className="text-green-800">
+                    {lastPaymentStatus === "no"
+                      ? (
+                        <>
+                          When you have your receipt, upload it on the{" "}
+                          <Link
+                            href="/proof-of-payment"
+                            className="font-semibold text-[#B22222] underline-offset-4 hover:underline"
+                          >
+                            Proof of Payment page
+                          </Link>{" "}
+                          so we can verify your registration without delay.
+                        </>
+                      )
+                      : "Keep a copy of your payment confirmation for your records."}
+                  </p>
+                </>
+              )}
             </div>
 
             <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
@@ -934,7 +1037,7 @@ export function SignupFormNew() {
         </DialogHeader>
 
         <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-4">
-          {hasStripePaymentLink && lastPaymentStatus !== "yes" && (
+          {hasStripePaymentLink && lastPaymentStatus !== "yes" && !lastSubmittedIsLeadership && (
             <Button asChild className="bg-[#635BFF] hover:bg-[#4B46C2] text-white w-full sm:w-auto">
               <a href={stripePaymentUrl} target="_blank" rel="noopener noreferrer">
                 Pay via Stripe
@@ -1596,22 +1699,84 @@ export function SignupFormNew() {
                   <p className="text-xs text-gray-500">{chairData.successfulCommittee.length} characters</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>
-                    What is your greatest strength and your greatest weakness as a chair and leader?{" "}
-                    <span className="text-red-500">*</span>
-                  </Label>
+              <div className="space-y-2">
+                <Label>
+                  What is your greatest strength and your greatest weakness as a chair and leader?{" "}
+                  <span className="text-red-500">*</span>
+                </Label>
                   <Textarea
                     value={chairData.strengthWeakness}
                     onChange={(e) => setChairData((prev) => ({ ...prev, strengthWeakness: e.target.value }))}
                     placeholder="Describe your greatest strength and weakness as a leader..."
                     className={`min-h-[100px] ${errors.chairStrengthWeakness ? "border-red-500" : ""}`}
                   />
-                  {errors.chairStrengthWeakness && (
-                    <p className="text-sm text-red-500">{errors.chairStrengthWeakness}</p>
-                  )}
-                  <p className="text-xs text-gray-500">{chairData.strengthWeakness.length} characters</p>
+                {errors.chairStrengthWeakness && (
+                  <p className="text-sm text-red-500">{errors.chairStrengthWeakness}</p>
+                )}
+                <p className="text-xs text-gray-500">{chairData.strengthWeakness.length} characters</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800">Upload your CV <span className="text-red-500">*</span></h4>
+                    <p className="text-sm text-gray-600">Attach a PDF or Word version of your chairing CV.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => chairCvInputRef.current?.click()}
+                    className="flex items-center gap-2"
+                  >
+                    <UploadCloud className="h-4 w-4" /> Choose file
+                  </Button>
                 </div>
+
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-5 w-5 text-gray-600" />
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-800">Upload your CV (PDF, DOC, or DOCX).</p>
+                      <p className="text-xs text-gray-600">
+                        Files are stored securely in Supabase storage so the Secretariat can review your experience.
+                      </p>
+                      {chairCvFile && (
+                        <p className="text-xs text-gray-700">Selected file: {chairCvFile.name}</p>
+                      )}
+                      {(chairCvError || errors.chairCv) && (
+                        <p className="text-xs text-red-600">{chairCvError ?? errors.chairCv}</p>
+                      )}
+                      {chairCvFile && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="px-0 text-red-600 hover:text-red-700"
+                          onClick={resetChairCv}
+                        >
+                          <X className="mr-1 h-4 w-4" /> Remove file
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <input
+                    ref={chairCvInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) {
+                        handleChairCvSelect(file)
+                      } else {
+                        resetChairCv()
+                      }
+                    }}
+                  />
+                </div>
+              </div>
               </div>
 
               <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
@@ -1937,6 +2102,15 @@ export function SignupFormNew() {
           {/* Payment Confirmation */}
           <div className="space-y-3 sm:space-4">
             <h3 className="text-lg sm:text-xl font-serif font-semibold text-primary">Payment Confirmation</h3>
+            {paymentProofTemporarilyDisabled && (
+              <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                <AlertTitle>Payment uploads paused for chairs and admins</AlertTitle>
+                <AlertDescription>
+                  Payment and receipt uploads for chair and admin applicants are disabled until the deadline passes and
+                  selections are announced. Please wait to pay until you have been selected.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-1.5 sm:space-y-2">
               <Label className="text-xs sm:text-sm font-medium text-gray-700">
                 Have you already paid the conference fee? <span className="text-red-500">*</span>
@@ -1944,19 +2118,20 @@ export function SignupFormNew() {
               <RadioGroup
                 value={hasPaid || undefined}
                 onValueChange={(value) => {
+                  if (paymentProofTemporarilyDisabled) return
                   setHasPaid(value as "yes" | "no")
                   clearError("paymentStatus")
                 }}
                 className="flex flex-col sm:flex-row gap-3"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes" id="has-paid-yes" />
+                  <RadioGroupItem value="yes" id="has-paid-yes" disabled={paymentProofTemporarilyDisabled} />
                   <Label htmlFor="has-paid-yes" className="text-sm text-gray-700">
                     Yes, I've already paid
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="has-paid-no" />
+                  <RadioGroupItem value="no" id="has-paid-no" disabled={paymentProofTemporarilyDisabled} />
                   <Label htmlFor="has-paid-no" className="text-sm text-gray-700">
                     Not yet
                   </Label>
@@ -1965,7 +2140,7 @@ export function SignupFormNew() {
               {errors.paymentStatus && <p className="text-sm text-red-500">{errors.paymentStatus}</p>}
             </div>
 
-            {hasPaid === "yes" && (
+            {hasPaid === "yes" && !paymentProofTemporarilyDisabled && (
               <>
                 <p className="text-sm text-gray-600">
                   Please upload a clear image or PDF of your payment receipt. This helps us verify registrations quickly.
@@ -1997,7 +2172,11 @@ export function SignupFormNew() {
                     Upload Proof of Payment <span className="text-red-500">*</span>
                   </Label>
                   <div
-                    className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors duration-200 cursor-pointer ${
+                    className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors duration-200 ${
+                      paymentProofTemporarilyDisabled
+                        ? "border-gray-300 bg-gray-50 cursor-not-allowed opacity-70"
+                        : "cursor-pointer"
+                    } ${
                       isDragActive
                         ? "border-[#B22222] bg-[#B22222]/5"
                         : errors.paymentProof
@@ -2006,11 +2185,15 @@ export function SignupFormNew() {
                             ? "border-green-500 bg-green-50"
                             : "border-gray-300 bg-white"
                     }`}
-                    onDragOver={handleDragOver}
-                    onDragEnter={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
+                    aria-disabled={paymentProofTemporarilyDisabled}
+                    onDragOver={paymentProofTemporarilyDisabled ? undefined : handleDragOver}
+                    onDragEnter={paymentProofTemporarilyDisabled ? undefined : handleDragOver}
+                    onDragLeave={paymentProofTemporarilyDisabled ? undefined : handleDragLeave}
+                    onDrop={paymentProofTemporarilyDisabled ? undefined : handleDrop}
+                    onClick={() => {
+                      if (paymentProofTemporarilyDisabled) return
+                      fileInputRef.current?.click()
+                    }}
                   >
                     {isDragActive && (
                       <div className="absolute inset-0 rounded-xl bg-[#B22222]/10 backdrop-blur-[1px] flex flex-col items-center justify-center pointer-events-none">
@@ -2024,6 +2207,7 @@ export function SignupFormNew() {
                       type="file"
                       accept="image/*,application/pdf"
                       className="hidden"
+                      disabled={paymentProofTemporarilyDisabled}
                       onChange={(event) => {
                         const file = event.target.files?.[0]
                         if (file) {
