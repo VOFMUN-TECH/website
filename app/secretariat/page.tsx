@@ -34,7 +34,7 @@ const DEFAULT_LINKEDIN = "https://www.linkedin.com/company/vofmun";
 const foundingSecretariat: SecretariatMember[] = [
   {
     name: "Tala Swaidan",
-    role: "<strong>Founder &<br/>Secretary-General</strong>",
+    role: "<strong>Founder <br/>Secretary-General</strong>",
     department: "Core",
     image: "/founders/TalaSwaidan_SG.jpg",
     bio: "Co-founder guiding VOFMUN's vision for inclusive and empowering youth diplomacy.",
@@ -51,7 +51,7 @@ As VOFMUN continues to grow, my hope is that it remains a space where young lead
   },
   {
     name: "Vihaan Shukla",
-    role: "<strong>Co-Founder &<br/>Head of Conference Affairs & Operations</strong>",
+    role: "<strong>Co-Founder <br/>Head of Conference Affairs & Operations</strong>",
     department: "Conference Affairs",
     image: "/founders/VihaanShukla_ConferenceAffairs.png",
     bio: "Co-founder overseeing conference operations, logistics, and delegate experience design.",
