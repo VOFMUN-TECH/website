@@ -100,6 +100,7 @@ See more on my website: `,
     department: "Committees",
     image: "/founders/VidurKumar_Committees.jpeg",
     bio: "Overseeing committee quality, background guide direction, and delegate experience.",
+    linkedin: "https://www.linkedin.com/in/vidur-ak",
     writeup: `Hi, I'm Vidur Kumar, Co-Head of Committees at VOFMUN 2026 and a Year 11 student at Dubai International Academy, Emirates Hills. I'm a student leader with experience in multiple school organisations, including Water for Life, World Scholars Cup Club, and DIAMUN 2026.
 
 Through these roles, I've developed strong skills in communication, logistics, event planning, and team coordination. I've also participated in six MUN conferences, gaining experience in different committees and topics. This has helped me create structured and intellectually engaging committee environments.
@@ -153,6 +154,7 @@ const deputies: SecretariatMember[] = [
     department: "Committees",
     image: "/founders/ArshSaxena_Committees.jpeg",
     bio: "Supporting committee quality, alignment, and delegate experience initiatives.",
+    linkedin: "https://www.linkedin.com/in/arsh-saxena-798408290/",
     writeup: `Hi, I'm Arsh Saxena, Deputy Head of Committees at VOMUN 2026 and a Year 11 student at Dubai International Academy, Emirates Hills. I’m an active student leader involved in multiple school initiatives, from academic clubs to service-based organisations. These experiences have shaped how I approach leadership: with purpose, curiosity, and a focus on elevating the people around me.
 
 Beyond my formal roles, I’ve built a rep for being that person who keeps things moving — whether it’s helping streamline planning, stepping in to fix last-minute issues, or supporting teams when the workload hits. I like bringing order to chaos, staying organised under pressure, and making sure everyone feels confident in what they’re doing.
