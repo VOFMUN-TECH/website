@@ -167,15 +167,7 @@ As Deputy Head of Committees, I support the Co-Heads in managing committee quali
     department: "Logistics",
     image: "/founders/AryanShah_Committees.jpg",
     bio: "Supporting logistical planning, coordination, and on-site readiness for VOFMUN.",
-    writeup: `Hi I'm Aryan Shah, Deputy of Logistics for VOFMUN 2026! I have previously participated in 4 MUN conferences, and have received an honorable mention in one of them. I am currently a Year 11 student at Dubai International Academy. I am also Vice-President of my school's Cubing and AI clubs. Outside of school I have organised and hosted multiple internationally recognized and licensed Rubik's Cube Competitions that have attracted the attention of some of the best cubers in the MENA region. At VOFMUN my goal is to ensure that all the delegates have an amazing experience at VOFMUN by handling all committee-related matters that range from finalising topics to country allocation and communication with all delegates.`,
-  },
-  {
-    name: "Ayaan Agrawal",
-    role: "<strong>Deputy of Media & Marketing</strong>",
-    department: "Media",
-    image: "/founders/AyaanAgrawal_Media.png",
-    bio: "Producing engaging multimedia content to showcase VOFMUN's story.",
-    writeup: `Hi! I’m Ayaan, and I’m a 15 year old student at DIAEH, currently in Year 11. I have a strong passion for content creation, particularly when it comes to video editing. I enjoy working on creative projects and finding new ways to make videos engaging to the audience and impactful. Content creation has always been something I love because it lets me express ideas visually and tell stories in unique ways. I’m super excited to be part of the VOFMUN team and I look forward to contributing my knowledge, and learning from everyone I work with!`,
+    writeup: `Hi I'm Aryan Shah, Deputy of Logistics for VOFMUN 2026! I have previously participated in 4 MUN conferences, and have received an honorable mention in one of them. I am currently a Year 11 student at Dubai International Academy. I am also Vice-President of my school's Cubing and AI club. Outside of school I have organised and hosted multiple internationally recognized and licensed Rubik's Cube Competitions that have attracted the attention of some of the best cubers in the MENA region. At VOFMUN my goal is to ensure that all the delegates have an amazing experience at VOFMUN by handling all committee-related matters that range from finalising topics to country allocation and communication with all delegates.`,
   },
   {
     name: "Hanxiao Yu",
