@@ -1,8 +1,7 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import * as XLSX from "xlsx"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +36,8 @@ const REQUIRED_COLUMNS = [
 ] as const
 
 const TEMPLATE_PATH = "/templates/School Delegate Application Template - VOFMUN I 2026.xlsx"
+const SPREADSHEET_SIZE_LIMIT_MB = 5
+const SPREADSHEET_SIZE_LIMIT_BYTES = SPREADSHEET_SIZE_LIMIT_MB * 1024 * 1024
 
 const initialFormState = {
   schoolName: "",
@@ -70,7 +71,10 @@ export function SchoolDelegationForm() {
   const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null)
   const [spreadsheetError, setSpreadsheetError] = useState<string | null>(null)
   const [spreadsheetSuccess, setSpreadsheetSuccess] = useState<string | null>(null)
+  const [isValidatingSpreadsheet, setIsValidatingSpreadsheet] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const validationRequestIdRef = useRef(0)
+  const validationWorkerRef = useRef<Worker | null>(null)
 
   const handleInputChange = (field: keyof FormState, value: string | boolean) => {
     setFormData((prev) => ({
@@ -84,55 +88,74 @@ export function SchoolDelegationForm() {
     })
   }
 
-  const validateSpreadsheet = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      throw new Error("Please upload an .xlsx Excel spreadsheet using the official template.")
-    }
-
-    const arrayBuffer = await file.arrayBuffer()
-    const workbook = XLSX.read(arrayBuffer, { type: "array" })
-
-    if (!workbook.SheetNames.length) {
-      throw new Error("The uploaded spreadsheet is empty. Please use the official template.")
-    }
-
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-    const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(worksheet, { header: 1 })
-    const headerRow = rows.find((row) =>
-      Array.isArray(row) && row.some((cell) => String(cell ?? "").trim().length > 0)
-    )
-
-    if (!headerRow) {
-      throw new Error("Unable to read the spreadsheet header. Please ensure the template headers are present.")
-    }
-
-    const headers = headerRow.map((cell) => String(cell ?? "").trim())
-    const missingColumns = REQUIRED_COLUMNS.filter((column) => !headers.includes(column))
-
-    if (missingColumns.length > 0) {
-      throw new Error(
-        `The spreadsheet is missing the following required column${missingColumns.length > 1 ? "s" : ""}: ${missingColumns.join(", ")}.`
-      )
+  const stopSpreadsheetWorker = () => {
+    if (validationWorkerRef.current) {
+      validationWorkerRef.current.terminate()
+      validationWorkerRef.current = null
     }
   }
 
+  const validateSpreadsheetInWorker = (file: File, requiredColumns: readonly string[]) =>
+    new Promise<{ ok: true } | { ok: false; error: string }>((resolve, reject) => {
+      stopSpreadsheetWorker()
+      const worker = new Worker(new URL("./workers/spreadsheet-validator.worker.ts", import.meta.url), {
+        type: "module",
+      })
+      validationWorkerRef.current = worker
+
+      const cleanup = () => {
+        worker.terminate()
+        if (validationWorkerRef.current === worker) {
+          validationWorkerRef.current = null
+        }
+      }
+
+      worker.onmessage = (event) => {
+        cleanup()
+        resolve(event.data)
+      }
+      worker.onerror = (event) => {
+        cleanup()
+        reject(event)
+      }
+
+      worker.postMessage({ file, requiredColumns })
+    })
+
   const handleSpreadsheetChange = async (file: File | null) => {
+    validationRequestIdRef.current += 1
+    const requestId = validationRequestIdRef.current
+    stopSpreadsheetWorker()
     setSpreadsheetError(null)
     setSpreadsheetSuccess(null)
+    setIsValidatingSpreadsheet(false)
+    setErrors((prev) => {
+      if (!prev.spreadsheet) return prev
+      const { spreadsheet, ...rest } = prev
+      return rest
+    })
 
     if (!file) {
       setSpreadsheetFile(null)
-      setErrors((prev) => {
-        if (!prev.spreadsheet) return prev
-        const { spreadsheet, ...rest } = prev
-        return rest
-      })
       return
     }
 
     try {
-      await validateSpreadsheet(file)
       setSpreadsheetFile(file)
+      if (!file.name.toLowerCase().endsWith(".xlsx")) {
+        throw new Error("Please upload an .xlsx Excel spreadsheet using the official template.")
+      }
+      if (file.size > SPREADSHEET_SIZE_LIMIT_BYTES) {
+        throw new Error(`The uploaded spreadsheet is too large. Please upload a file smaller than ${SPREADSHEET_SIZE_LIMIT_MB} MB.`)
+      }
+      setIsValidatingSpreadsheet(true)
+      const result = await validateSpreadsheetInWorker(file, REQUIRED_COLUMNS)
+      if (validationRequestIdRef.current !== requestId) {
+        return
+      }
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
       setSpreadsheetSuccess("Template verified. All required columns are present.")
       setErrors((prev) => {
         if (!prev.spreadsheet) return prev
@@ -140,12 +163,20 @@ export function SchoolDelegationForm() {
         return rest
       })
     } catch (error: any) {
+      if (validationRequestIdRef.current !== requestId) {
+        return
+      }
       setSpreadsheetFile(null)
-      setSpreadsheetError(error?.message ?? "Unable to validate the uploaded spreadsheet.")
+      const message = error?.message ?? "Unable to validate the uploaded spreadsheet."
+      setSpreadsheetError(message)
       setErrors((prev) => ({
         ...prev,
-        spreadsheet: error?.message ?? "Unable to validate the uploaded spreadsheet.",
+        spreadsheet: message,
       }))
+    } finally {
+      if (validationRequestIdRef.current === requestId) {
+        setIsValidatingSpreadsheet(false)
+      }
     }
   }
 
@@ -217,11 +248,19 @@ export function SchoolDelegationForm() {
     setSpreadsheetFile(null)
     setSpreadsheetError(null)
     setSpreadsheetSuccess(null)
+    setIsValidatingSpreadsheet(false)
     setErrors({})
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
+    stopSpreadsheetWorker()
   }
+
+  useEffect(() => {
+    return () => {
+      stopSpreadsheetWorker()
+    }
+  }, [])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -565,6 +604,12 @@ export function SchoolDelegationForm() {
                   <p className="text-sm text-gray-700 break-all">Selected file: {spreadsheetFile.name}</p>
                 )}
               </div>
+              {isValidatingSpreadsheet && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Upload received. Verifying the spreadsheet template...</span>
+                </div>
+              )}
               {spreadsheetSuccess && (
                 <div className="flex items-start gap-2 text-sm text-green-700">
                   <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
