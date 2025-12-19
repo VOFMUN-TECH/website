@@ -49,17 +49,50 @@ function makeSchema(isChair: boolean) {
   } as const;
 }
 
-function buildPrompt(roleType: "chair" | "admin", prompt: string, extraText?: string) {
+function splitIntoExperienceLines(raw: string): string[] {
+  return raw
+    .split(/\r?\n/)
+    .flatMap((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return [];
+      return trimmed
+        .split(/[;•·]/)
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+    })
+    .filter((segment) => {
+      return !/^(completed muns|delegate|chairing)\s*:?\s*$/i.test(segment);
+    });
+}
+
+function buildNumberedExperienceBlock(lines: string[]): string {
+  return lines.map((line, index) => `${index + 1}. ${line}`).join("\n");
+}
+
+function buildPrompt(roleType: "chair" | "admin", text: string, extraContext?: string) {
   const isChair = roleType === "chair";
+  const lines = splitIntoExperienceLines(text);
+  const numberedLines = buildNumberedExperienceBlock(lines);
   const userContext =
-    extraText && typeof extraText === "string"
-      ? `\n\nAdditional context:\n${extraText}`
+    extraContext && typeof extraContext === "string"
+      ? `\n\nAdditional context (optional):\n${extraContext}`
       : "";
 
   return `
 You extract structured ${isChair ? "chair" : "admin"} experiences.
 
-Return ONLY a JSON array. Follow this shape exactly.
+Return ONLY valid JSON. Return a JSON array and follow this shape exactly.
+You are given a numbered list of experience fragments.
+Many lines map cleanly to a single experience, but some lines may contain multiple conferences or roles.
+Your job is to extract a JSON array of distinct experiences.
+Do NOT merge different conferences or roles into a single item.
+Whenever a line clearly contains multiple conferences/roles (different conferences, locations, or years),
+create multiple array items.
+It is OK if the array has more items than there are lines, as long as each item corresponds to
+some distinct experience from the text.
+If you are unsure, err on the side of extracting more items rather than fewer.
+Extract as many experiences as possible; do not summarize.
+If a field is missing, use an empty string instead of omitting it.
 
 ${
   isChair
@@ -71,9 +104,38 @@ ${
 ]`
 }
 
-Source text:
-${prompt}${userContext}
+Numbered experience lines:
+${numberedLines || "(no valid experience lines found)"}
+${userContext}
 `.trim();
+}
+
+const CHAIR_FIELDS = ["conference", "position", "year", "description"] as const;
+const ADMIN_FIELDS = ["role", "organization", "year", "description"] as const;
+
+function coerceString(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function normalizeExperience(
+  value: unknown,
+  roleType: "chair" | "admin"
+): ChairExp | AdminExp | null {
+  if (!value || typeof value !== "object") return null;
+  const fields = roleType === "chair" ? CHAIR_FIELDS : ADMIN_FIELDS;
+  const normalized = Object.fromEntries(
+    fields.map((field) => [field, coerceString((value as Record<string, unknown>)[field])])
+  ) as ChairExp | AdminExp;
+
+  const hasAnyField = fields.some((field) => (normalized as Record<string, string>)[field]);
+  return hasAnyField ? normalized : null;
+}
+
+function looksLikeExperienceObject(value: unknown, roleType: "chair" | "admin") {
+  if (!value || typeof value !== "object") return false;
+  const fields = roleType === "chair" ? CHAIR_FIELDS : ADMIN_FIELDS;
+  return fields.some((field) => Object.prototype.hasOwnProperty.call(value, field));
 }
 
 function looksLikePublisherAccess404(err: any) {
@@ -91,17 +153,18 @@ async function callModelOnce(opts: {
   apiKey: string;
   modelName: string;
   roleType: "chair" | "admin";
-  prompt: string;
-  text?: string;
+  prompt?: string;
+  text: string;
+  expectedCount?: number;
 }) {
-  const { apiKey, modelName, roleType, prompt, text } = opts;
+  const { apiKey, modelName, roleType, prompt, text, expectedCount } = opts;
   const genAI = new GoogleGenerativeAI(apiKey);
   const isChair = roleType === "chair";
   const model = genAI.getGenerativeModel({ model: modelName });
 
   try {
     const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: buildPrompt(roleType, prompt, text) }] }],
+      contents: [{ role: "user", parts: [{ text: buildPrompt(roleType, text, prompt) }] }],
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: makeSchema(isChair),
@@ -109,15 +172,47 @@ async function callModelOnce(opts: {
     });
 
     const raw = result.response?.text() ?? "";
-    let experiences: Array<ChairExp | AdminExp> = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    let candidates: unknown[] = [];
 
-    if (!Array.isArray(experiences)) throw new Error("Response is not an array");
+    if (Array.isArray(parsed)) {
+      candidates = parsed;
+    } else if (parsed && typeof parsed === "object") {
+      const parsedObj = parsed as { experiences?: unknown };
+      if (Array.isArray(parsedObj.experiences)) {
+        candidates = parsedObj.experiences;
+      } else if (looksLikeExperienceObject(parsedObj, roleType)) {
+        candidates = [parsedObj];
+      }
+    }
 
-    // runtime guard rails
-    experiences = experiences.filter((exp: any) => {
-      if (isChair) return exp?.conference && exp?.position && exp?.year;
-      return exp?.role && exp?.organization && exp?.year;
-    });
+    if (candidates.length === 0) {
+      throw new Error("Response did not contain any experience entries");
+    }
+
+    const total = candidates.length;
+    const experiences = candidates
+      .map((exp) => normalizeExperience(exp, roleType))
+      .filter((exp): exp is ChairExp | AdminExp => Boolean(exp));
+    const discarded = total - experiences.length;
+
+    if (discarded > 0) {
+      console.info("Experience parsing: filtered empty entries", {
+        modelName,
+        total,
+        kept: experiences.length,
+        discarded,
+      });
+    }
+
+    if (typeof expectedCount === "number") {
+      console.log("Gemini experiences parsed", {
+        modelName,
+        expectedCount,
+        received: experiences.length,
+        emptyFiltered: discarded,
+      });
+    }
 
     if (experiences.length === 0) throw new Error("No valid experiences found");
 
@@ -143,9 +238,9 @@ export async function POST(request: NextRequest) {
     const { text, roleType, prompt } = body ?? {};
 
     // Validate user inputs
-    if (!roleType || !prompt) {
+    if (!roleType || !text) {
       return NextResponse.json(
-        { error: "Missing required fields: roleType and prompt are required." },
+        { error: "Missing required fields: roleType and text are required." },
         { status: 400 }
       );
     }
@@ -171,6 +266,9 @@ export async function POST(request: NextRequest) {
 
     let lastErr: any = null;
 
+    const experienceLines = splitIntoExperienceLines(String(text));
+    const expectedCount = experienceLines.length;
+
     for (const modelName of candidateModels) {
       try {
         const experiences = await callModelOnce({
@@ -178,7 +276,8 @@ export async function POST(request: NextRequest) {
           modelName,
           roleType,
           prompt,
-          text,
+          text: String(text),
+          expectedCount,
         });
         return NextResponse.json({
           success: true,
