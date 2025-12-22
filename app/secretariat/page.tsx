@@ -51,12 +51,12 @@ As VOFMUN continues to grow, my hope is that it remains a space where young lead
   },
   {
     name: "Vihaan Shukla",
-    role: "<strong>Co-Founder <br/>Director-General</strong>",
-    department: "Core",
+    role: "<strong>Co-Founder <br/>Head of Conference Affairs & Operations</strong>",
+    department: "Conference Affairs",
     image: "/founders/VihaanShukla_ConferenceAffairs.png",
-    bio: "Co-founder overseeing conference operations, logistics, and delegate experience.",
+    bio: "Co-founder overseeing conference operations, logistics, and delegate experience design.",
     linkedin: "https://www.linkedin.com/in/vihaanshukla",
-    writeup: `Hi, I’m Vihaan Shukla, Co-Founder and Director-General at VOFMUN 2026!
+    writeup: `Hi, I’m Vihaan Shukla, Co-Founder and Head of Conference Affairs & Operations at VOFMUN 2026!
 
 I have participated in over 15 MUN conferences, earning more than 10 awards including Best Delegate and Best Research. I’ve also chaired 5 conferences, developing strong skills in debate, diplomacy, and communication.
 
@@ -243,6 +243,8 @@ const getDepartmentIcon = (department: string) => {
       return Users;
     case "Technology":
       return Cpu;
+    case "Conference Affairs":
+      return Workflow;
     case "Delegate Affairs":
       return Workflow;
     case "Logistics":
@@ -279,7 +281,7 @@ const getDepartmentColor = (department: string) => {
         border: "border-green-500",
         badgeClass: "bg-green-600 text-white border-0",
       };
-    case "Director-General":
+    case "Conference Affairs":
       return {
         bg: "bg-gradient-to-br from-teal-500 to-teal-700",
         text: "text-white",
@@ -540,7 +542,7 @@ export default function SecretariatPage() {
               Deputies
             </h2>
             <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-              Our deputies assist heads to keep every initiative responsive, well-coordinated, and memorable for delegates.
+              Our deputies partner with heads to keep every initiative responsive, well-coordinated, and memorable for delegates.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {deputies.map((member, index) =>
