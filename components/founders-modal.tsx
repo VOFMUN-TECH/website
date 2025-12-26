@@ -82,6 +82,11 @@ const founders = [
     image: "/founders/TamaraMoshawrab_Media.png",
   },
   {
+    name: "Reem Ghanayem",
+    role: "Deputy of Media & Marketing",
+    image: "/founders/ReemGhanayem_Media.png",
+  },
+  {
     name: "Hanxiao Yu",
     role: "Deputy of Media & Marketing",
     image: "/founders/HanxiaoYu_Media.jpg",
