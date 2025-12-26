@@ -170,6 +170,14 @@ As Deputy Head of Committees, I support the Co-Heads in managing committee quali
     writeup: `Hi I'm Aryan Shah, Deputy of Logistics for VOFMUN 2026! I have previously participated in 4 MUN conferences, and have received an honorable mention in one of them. I am currently a Year 11 student at Dubai International Academy. I am also Vice-President of my school's Cubing and AI club. Outside of school I have organised and hosted multiple internationally recognized and licensed Rubik's Cube Competitions that have attracted the attention of some of the best cubers in the MENA region. At VOFMUN my goal is to ensure that all the delegates have an amazing experience at VOFMUN by handling all committee-related matters that range from finalising topics to country allocation and communication with all delegates.`,
   },
   {
+    name: "Reem Ghanayem",
+    role: "<strong>Deputy of Media & Marketing</strong>",
+    department: "Media",
+    image: "/founders/ReemGhanayem_Media.jpg",
+    bio: "Helping deliver logistics planning, venue coordination, and delegate services.",
+    writeup: `Hello I'm Reem Ghanayem - one of the Deputies of Media for VOFMUN 2026! I have previously participated in the Emirates Literature Festival. I also am passionate about dance, play piano, have worked in marketing before, and enjoy public speaking. I speak Arabic and English.`,
+  },
+  {
     name: "Hanxiao Yu",
     role: "<strong>Deputy of Media & Marketing</strong>",
     department: "Media",
