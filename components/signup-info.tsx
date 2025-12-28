@@ -82,7 +82,7 @@ export function SignupInfo() {
             {[
               "Access to all committee sessions",
               "Welcome reception and networking events",
-              "Lunch and refreshments all three days",
+              "Food and refreshments on all days",
               "Conference materials and resources",
               "Certificate of participation",
               "Awards ceremony and recognition",
