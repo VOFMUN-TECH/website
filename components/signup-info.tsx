@@ -122,8 +122,11 @@ export function SignupInfo() {
           <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
             <p className="text-sm text-gray-800">
               <strong>Cancellation Policy:</strong> All payments made are strictly non-refundable. Refunds will
-              only be considered in exceptional circumstances. Please refer to the
-              <a href="https://vofmun.org/pdfs/T&Cs.pdf">Terms & Conditions</a> for further details.
+              only be considered in exceptional circumstances. Please refer to the {" "}
+              <Link href="pdfs/T&Cs.pdf" className="font-semibold text-[#B22222] underline-offset-4 hover:underline">
+                Terms & Conditions
+              </Link>{" "}
+                for further details.
             </p>
           </div>
           <div className="p-3 bg-red-50 rounded-lg border border-red-200">
