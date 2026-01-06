@@ -57,11 +57,6 @@ const founders = [
     image: "/founders/PranavVerma_Finance.jpg",
   },
   {
-    name: "Caelyn Harding",
-    role: "Deputy of Finance",
-    image: "/founders/CaelynHarding_Finance.png",
-  },
-  {
     name: "Noaf Qassem",
     role: "Deputy of Finance",
     image: "/founders/NoafQassem_Finance.png",
