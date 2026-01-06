@@ -233,14 +233,6 @@ My future aspirations lie in either diplomacy or economics, and I believe that u
 
 Being part of the VOFMUN team and this great journey has been incredibly exciting, and I'm committed to ensuring the financial planning behind the scenes helps make this conference as smooth, impactful, and unforgettable as possible. Can't wait to see what we accomplish together; hope to see you at VOFMUN 2026!`,
   },
-  {
-    name: "Caelyn Harding",
-    role: "<strong>Deputy of Finance</strong>",
-    department: "Finance",
-    image: "/founders/CaelynHarding_Finance.png",
-    bio: "Championing resource planning that elevates every delegate experience.",
-    writeup: `Hey! My name is Caelyn. I go to GEMS Metropole School in Motor City, and I’m in Year 11. I’m currently enrolled in my school’s MUN and will be attending the next conference as a delegate. I’m also part of VOFMUN’s Finance Team! I love to debate, draw, and play the piano, but most importantly, I love helping people. I joined the Finance Team to improve everyone’s experience at VOFMUN while also considering the financial and organizational aspects. I hope to use my skills to benefit the team and make VOFMUN as memorable as possible!`,
-  },
 ];
 
 const getDepartmentIcon = (department: string) => {
