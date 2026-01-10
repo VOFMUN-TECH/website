@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# deps/build
+node_modules/
+.next/
+dist/
+out/
+
+# env / secrets
+.env
+.env.*
+*.pem
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editor
+.vscode/
+.idea/
