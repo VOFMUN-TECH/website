@@ -54,6 +54,7 @@ export type SignupRecord = {
         committee1?: string | null
         committee2?: string | null
         committee3?: string | null
+        allocationStatus?: "pending" | "allocated" | null
       }
     | null
   chair_data:
@@ -144,7 +145,19 @@ type FieldOption<RecordType> = {
 }
 
 const USER_VIEW_DEFAULT_FIELDS: Record<UserView, string[]> = {
-  all: ["name", "email", "phone", "school", "role", "primaryCommittee", "paymentStatus", "paymentProof", "submittedAt", "reviewStatus"],
+  all: [
+    "name",
+    "email",
+    "phone",
+    "school",
+    "role",
+    "primaryCommittee",
+    "paymentStatus",
+    "paymentProof",
+    "submittedAt",
+    "reviewStatus",
+    "applicationStatus",
+  ],
   delegates: [
     "name",
     "email",
@@ -171,6 +184,7 @@ const USER_VIEW_DEFAULT_FIELDS: Record<UserView, string[]> = {
     "chairWhyBestFit",
     "paymentStatus",
     "reviewStatus",
+    "applicationStatus",
   ],
   admins: [
     "name",
@@ -182,6 +196,7 @@ const USER_VIEW_DEFAULT_FIELDS: Record<UserView, string[]> = {
     "adminUnderstandsRole",
     "paymentStatus",
     "reviewStatus",
+    "applicationStatus",
   ],
 }
 
@@ -468,8 +483,55 @@ const SCHOOL_FIELD_OPTIONS: FieldOption<SchoolDelegationRecord>[] = [
 
 function createUserFieldOptions(
   handleStatusChange: (recordId: number, nextStatus: PaymentStatusValue) => Promise<void> | void,
+  handleDelegateAllocationChange: (record: SignupRecord, nextStatus: DelegateAllocationStatus) => Promise<void> | void,
+  handleApplicationStatusChange: (record: SignupRecord, nextStatus: ApplicationStatusValue) => Promise<void> | void,
   updatingId: number | null,
 ): Record<UserView, FieldOption<SignupRecord>[]> {
+  const applicationStatusField: FieldOption<SignupRecord> = {
+    key: "applicationStatus",
+    label: "Application status",
+    description: "Update chair/admin application status",
+    render: (record) => {
+      if (record.role !== "chair" && record.role !== "admin") {
+        return <span className="text-slate-400">—</span>
+      }
+
+      const options = record.role === "chair" ? chairApplicationOptions : adminApplicationOptions
+      const currentStatus = getApplicationStatus(record)
+
+      return (
+        <Select
+          value={currentStatus}
+          onValueChange={(value) => void handleApplicationStatusChange(record, value as ApplicationStatusValue)}
+          disabled={updatingId === record.id}
+        >
+          <SelectTrigger className="w-[190px] border-[#B22222]/40 text-left text-sm focus:ring-[#B22222]">
+            {updatingId === record.id ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" /> Updating...
+              </span>
+            ) : (
+              <SelectValue />
+            )}
+          </SelectTrigger>
+          <SelectContent className="text-sm">
+            {options.map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                className="group py-1.5 data-[highlighted]:bg-transparent"
+              >
+                <span className={applicationStatusPillClassName(option.value)}>
+                  {option.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    },
+  }
+
   const baseFields: FieldOption<SignupRecord>[] = [
     {
       key: "id",
@@ -587,7 +649,7 @@ function createUserFieldOptions(
     {
       key: "registrationStatus",
       label: "Registration status",
-      render: (record) => <span className="text-slate-600">{record.registration_status ?? "—"}</span>,
+      render: (record) => <span className="text-slate-600">{getApplicationStatusLabel(record)}</span>,
     },
     {
       key: "submittedAt",
@@ -649,28 +711,67 @@ function createUserFieldOptions(
       label: "Review status",
       description: "Update payment review status",
       render: (record) => (
-        <Select
-          value={(record.payment_status ?? "unpaid") as PaymentStatusValue}
-          onValueChange={(value) => void handleStatusChange(record.id, value as PaymentStatusValue)}
-          disabled={updatingId === record.id}
-        >
-          <SelectTrigger className="w-[180px] border-[#B22222]/40 text-left text-sm focus:ring-[#B22222]">
-            {updatingId === record.id ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin" /> Updating...
+        <div className="space-y-3">
+          <Select
+            value={(record.payment_status ?? "unpaid") as PaymentStatusValue}
+            onValueChange={(value) => void handleStatusChange(record.id, value as PaymentStatusValue)}
+            disabled={updatingId === record.id}
+          >
+            <SelectTrigger className="w-[180px] border-[#B22222]/40 text-left text-sm focus:ring-[#B22222]">
+              {updatingId === record.id ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Updating...
+                </span>
+              ) : (
+                <SelectValue />
+              )}
+            </SelectTrigger>
+            <SelectContent className="text-sm">
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {record.role === "delegate" && record.payment_status === "paid" ? (
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Delegation allocation
               </span>
-            ) : (
-              <SelectValue />
-            )}
-          </SelectTrigger>
-          <SelectContent className="text-sm">
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              <Select
+                value={getDelegateAllocationStatus(record)}
+                onValueChange={(value) =>
+                  void handleDelegateAllocationChange(record, value as DelegateAllocationStatus)
+                }
+                disabled={updatingId === record.id}
+              >
+                <SelectTrigger className="w-[180px] border-[#B22222]/40 text-left text-sm focus:ring-[#B22222]">
+                  {updatingId === record.id ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Updating...
+                    </span>
+                  ) : (
+                    <SelectValue />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="text-sm">
+                  {delegateAllocationOptions.map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      className="group py-1.5 data-[highlighted]:bg-transparent"
+                    >
+                      <span className={delegateAllocationPillClassName(option.value)}>
+                        {option.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
       ),
     },
   ]
@@ -833,10 +934,10 @@ function createUserFieldOptions(
   ]
 
   return {
-    all: baseFields,
+    all: [...baseFields, applicationStatusField],
     delegates: [...baseFields, ...delegateFields],
-    chairs: [...baseFields, ...chairFields],
-    admins: [...baseFields, ...adminFields],
+    chairs: [...baseFields, applicationStatusField, ...chairFields],
+    admins: [...baseFields, applicationStatusField, ...adminFields],
   }
 }
 
@@ -849,6 +950,16 @@ type PaymentStatusValue =
   | "fake"
   | "refunded"
 
+type DelegateAllocationStatus = "pending" | "allocated"
+
+type ChairApplicationStatus = "pending" | "shortlisted" | "accepted" | "rejected"
+
+type AdminApplicationStatus = "pending" | "accepted" | "rejected"
+
+type ApplicationStatusValue = ChairApplicationStatus | AdminApplicationStatus
+
+type RegistrationStatusValue = "pending" | "approved" | "confirmed" | "rejected"
+
 const statusOptions: { value: PaymentStatusValue; label: string }[] = [
   { value: "paid", label: "Confirmed" },
   { value: "refunded", label: "Refunded" },
@@ -858,6 +969,50 @@ const statusOptions: { value: PaymentStatusValue; label: string }[] = [
   { value: "pending", label: "Pending review" },
   { value: "unpaid", label: "Unpaid" },
 ]
+
+const delegateAllocationOptions: { value: DelegateAllocationStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "allocated", label: "Allocated" },
+]
+
+const chairApplicationOptions: { value: ChairApplicationStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "shortlisted", label: "Shortlisted" },
+  { value: "accepted", label: "Accepted" },
+  { value: "rejected", label: "Rejected" },
+]
+
+const adminApplicationOptions: { value: AdminApplicationStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "accepted", label: "Accepted" },
+  { value: "rejected", label: "Rejected" },
+]
+
+const statusPillBase =
+  "inline-flex w-fit items-center rounded-full px-3 py-1 text-sm font-medium leading-none";
+
+const applicationStatusPillClassName = (status: ApplicationStatusValue) => {
+  switch (status) {
+    case "accepted":
+      return `${statusPillBase} bg-emerald-600 text-white group-data-[highlighted]:bg-emerald-700`;
+    case "shortlisted":
+      return `${statusPillBase} bg-emerald-100 text-emerald-900 group-data-[highlighted]:bg-emerald-200`;
+    case "rejected":
+      return `${statusPillBase} bg-red-600 text-white group-data-[highlighted]:bg-red-700`;
+    default: // pending
+      return `${statusPillBase} bg-slate-200 text-slate-900 group-data-[highlighted]:bg-slate-300`;
+  }
+};
+
+const delegateAllocationPillClassName = (status: DelegateAllocationStatus) => {
+  switch (status) {
+    case "allocated":
+      return `${statusPillBase} bg-emerald-600 text-white group-data-[highlighted]:bg-emerald-700`;
+    case "pending":
+    default:
+      return `${statusPillBase} bg-amber-200 text-amber-950 group-data-[highlighted]:bg-amber-300`;
+  }
+};
 
 const formatPaymentStatus = (status: PaymentStatusValue | null) => {
   if (!status) return "Unpaid"
@@ -908,6 +1063,69 @@ const badgeClassNameForStatus = (status: PaymentStatusValue | null) => {
       return undefined
   }
 }
+
+const getDelegateAllocationStatus = (record: SignupRecord): DelegateAllocationStatus => {
+  return record.delegate_data?.allocationStatus === "allocated" ? "allocated" : "pending"
+}
+
+const chairUiToDbStatus: Record<ChairApplicationStatus, RegistrationStatusValue> = {
+  pending: "pending",
+  shortlisted: "approved",
+  accepted: "confirmed",
+  rejected: "rejected",
+}
+
+const adminUiToDbStatus: Record<AdminApplicationStatus, RegistrationStatusValue> = {
+  pending: "pending",
+  accepted: "confirmed",
+  rejected: "rejected",
+}
+
+const chairDbToUiStatus: Record<RegistrationStatusValue, ChairApplicationStatus> = {
+  pending: "pending",
+  approved: "shortlisted",
+  confirmed: "accepted",
+  rejected: "rejected",
+}
+
+const adminDbToUiStatus: Record<RegistrationStatusValue, AdminApplicationStatus> = {
+  pending: "pending",
+  approved: "accepted",
+  confirmed: "accepted",
+  rejected: "rejected",
+}
+
+const getApplicationStatus = (record: SignupRecord): ApplicationStatusValue => {
+  const status = (record.registration_status ?? "pending") as RegistrationStatusValue
+
+  if (record.role === "chair") {
+    return chairDbToUiStatus[status] ?? "pending"
+  }
+
+  if (record.role === "admin") {
+    return adminDbToUiStatus[status] ?? "pending"
+  }
+
+  return "pending"
+}
+
+const getApplicationStatusLabel = (record: SignupRecord) => {
+  if (record.role !== "chair" && record.role !== "admin") {
+    return "—"
+  }
+
+  return formatStatusLabel(getApplicationStatus(record))
+}
+
+const getRegistrationStatusForUpdate = (record: SignupRecord, nextStatus: ApplicationStatusValue) => {
+  if (record.role === "chair") {
+    return chairUiToDbStatus[nextStatus as ChairApplicationStatus] ?? "pending"
+  }
+
+  return adminUiToDbStatus[nextStatus as AdminApplicationStatus] ?? "pending"
+}
+
+const formatStatusLabel = (status: string) => status.charAt(0).toUpperCase() + status.slice(1)
 
 export function PortalContent({ onSignOut }: PortalContentProps) {
   const supabase = useMemo(() => createClient(), [])
@@ -1141,15 +1359,49 @@ export function PortalContent({ onSignOut }: PortalContentProps) {
 
     const usersChannel = supabase
       .channel("system-users")
-      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, () => {
-        void fetchRecords()
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "users" }, (payload) => {
+        const nextRecord = payload.new as SignupRecord
+        setRecords((previous) => {
+          if (previous.some((record) => record.id === nextRecord.id)) {
+            return previous
+          }
+          return [nextRecord, ...previous]
+        })
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "users" }, (payload) => {
+        const nextRecord = payload.new as SignupRecord
+        setRecords((previous) =>
+          previous.map((record) => (record.id === nextRecord.id ? { ...record, ...nextRecord } : record)),
+        )
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "users" }, (payload) => {
+        const removedId = (payload.old as SignupRecord | null)?.id
+        if (!removedId) return
+        setRecords((previous) => previous.filter((record) => record.id !== removedId))
       })
       .subscribe()
 
     const delegationsChannel = supabase
       .channel("system-school-delegations")
-      .on("postgres_changes", { event: "*", schema: "public", table: "school_delegations" }, () => {
-        void fetchSchoolDelegations()
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "school_delegations" }, (payload) => {
+        const nextRecord = payload.new as SchoolDelegationRecord
+        setSchoolDelegations((previous) => {
+          if (previous.some((record) => record.id === nextRecord.id)) {
+            return previous
+          }
+          return [nextRecord, ...previous]
+        })
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "school_delegations" }, (payload) => {
+        const nextRecord = payload.new as SchoolDelegationRecord
+        setSchoolDelegations((previous) =>
+          previous.map((record) => (record.id === nextRecord.id ? { ...record, ...nextRecord } : record)),
+        )
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "school_delegations" }, (payload) => {
+        const removedId = (payload.old as SchoolDelegationRecord | null)?.id
+        if (!removedId) return
+        setSchoolDelegations((previous) => previous.filter((record) => record.id !== removedId))
       })
       .subscribe()
 
@@ -1262,9 +1514,82 @@ export function PortalContent({ onSignOut }: PortalContentProps) {
     [supabase],
   )
 
+  const handleDelegateAllocationChange = useCallback(
+    async (record: SignupRecord, nextStatus: DelegateAllocationStatus) => {
+      setUpdateError(null)
+      setUpdatingId(record.id)
+
+      const nextDelegateData = {
+        ...(record.delegate_data ?? {}),
+        allocationStatus: nextStatus,
+      }
+
+      try {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ delegate_data: nextDelegateData })
+          .eq("id", record.id)
+
+        if (updateError) {
+          setUpdateError("Unable to update allocation status. Please try again.")
+          return
+        }
+
+        setRecords((previous) =>
+          previous.map((entry) => (entry.id === record.id ? { ...entry, delegate_data: nextDelegateData } : entry)),
+        )
+      } catch (cause) {
+        console.error("Failed to update allocation status", cause)
+        setUpdateError("Unable to update allocation status. Please try again.")
+      } finally {
+        setUpdatingId(null)
+      }
+    },
+    [supabase],
+  )
+
+  const handleApplicationStatusChange = useCallback(
+    async (record: SignupRecord, nextStatus: ApplicationStatusValue) => {
+      setUpdateError(null)
+      setUpdatingId(record.id)
+
+      const nextDbStatus = getRegistrationStatusForUpdate(record, nextStatus)
+
+      try {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ registration_status: nextDbStatus })
+          .eq("id", record.id)
+
+        if (updateError) {
+          setUpdateError("Unable to update application status. Please try again.")
+          return
+        }
+
+        setRecords((previous) =>
+          previous.map((entry) =>
+            entry.id === record.id ? { ...entry, registration_status: nextDbStatus } : entry,
+          ),
+        )
+      } catch (cause) {
+        console.error("Failed to update application status", cause)
+        setUpdateError("Unable to update application status. Please try again.")
+      } finally {
+        setUpdatingId(null)
+      }
+    },
+    [supabase],
+  )
+
   const userFieldOptions = useMemo(
-    () => createUserFieldOptions(handleStatusChange, updatingId),
-    [handleStatusChange, updatingId],
+    () =>
+      createUserFieldOptions(
+        handleStatusChange,
+        handleDelegateAllocationChange,
+        handleApplicationStatusChange,
+        updatingId,
+      ),
+    [handleStatusChange, handleDelegateAllocationChange, handleApplicationStatusChange, updatingId],
   )
 
   const exportToXlsx = useCallback(async () => {
@@ -1278,6 +1603,10 @@ export function PortalContent({ onSignOut }: PortalContentProps) {
       Role: record.role,
       CommitteePreference1: getPrimaryCommitteePreference(record) ?? "",
       PaymentStatus: formatPaymentStatus(record.payment_status),
+      DelegationAllocationStatus:
+        record.role === "delegate" ? formatStatusLabel(getDelegateAllocationStatus(record)) : "",
+      ApplicationStatus:
+        record.role === "chair" || record.role === "admin" ? getApplicationStatusLabel(record) : "",
       ProofFileName: record.payment_proof_file_name ?? "",
       ProofUrl: record.payment_proof_url ?? "",
       SubmittedAt: new Date(record.created_at).toLocaleString(),
