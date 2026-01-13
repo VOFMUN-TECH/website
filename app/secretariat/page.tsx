@@ -193,6 +193,7 @@ I've taken part in the World Scholar's Cup before, so I already have some experi
     department: "Media",
     image: "/founders/SairaShirvaikar_Media.jpeg",
     bio: "Amplifying VOFMUN's mission through multilingual media and outreach efforts.",
+    linkedin: "https://www.linkedin.com/in/saira-shirvaikar-49839431b",
     writeup: `Hi, I’m Saira Shirvaikar, the Deputy Head of Media and Marketing for VOFMUN 2026. I am a Year 12 student at Jumeirah College and currently serve as Deputy Head of Media for JCMUN. I have also participated in F1 in Schools, working as a Graphic Designer in 2024, where I supported my team in winning the national Best Marketing award, and as a Business Manager in 2025, achieving a second-place national finish.`,
   },
   {
