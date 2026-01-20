@@ -17,7 +17,7 @@ export const REFERRAL_CODES: ReferralCodeEntry[] = [
   { code: 'AS812', owner: 'Aryan Shah' },
   { code: 'RG511', owner: 'Reem Ghanayem' },
   { code: 'HY123', owner: 'Hanxiao Yu' },
-  { code: 'SS123', owner: 'Saira Shirvaikar' },
+  { code: 'SRS14', owner: 'Saira Shirvaikar' },
   { code: 'PS123', owner: 'Prakhar Sinha' },
   { code: 'JS111', owner: 'Jaden Shibu' },
   { code: 'TM123', owner: 'Tamara Moshawrab' },
