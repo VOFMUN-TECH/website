@@ -14,7 +14,7 @@ export const REFERRAL_CODES: ReferralCodeEntry[] = [
   { code: 'VK245', owner: 'Vidur Aravind Kumar' },
   
   { code: 'AS123', owner: 'Arsh Saxena' },
-  { code: 'AS456', owner: 'Aryan Shah' },
+  { code: 'AS812', owner: 'Aryan Shah' },
   { code: 'RG511', owner: 'Reem Ghanayem' },
   { code: 'HY123', owner: 'Hanxiao Yu' },
   { code: 'SS123', owner: 'Saira Shirvaikar' },
