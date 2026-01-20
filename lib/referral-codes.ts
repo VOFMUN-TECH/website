@@ -13,7 +13,7 @@ export const REFERRAL_CODES: ReferralCodeEntry[] = [
   { code: 'VP804', owner: 'Vyom Patel' },
   { code: 'VK245', owner: 'Vidur Aravind Kumar' },
   
-  { code: 'AS123', owner: 'Arsh Saxena' },
+  { code: 'AS696', owner: 'Arsh Saxena' },
   { code: 'AS812', owner: 'Aryan Shah' },
   { code: 'RG511', owner: 'Reem Ghanayem' },
   { code: 'HY123', owner: 'Hanxiao Yu' },
