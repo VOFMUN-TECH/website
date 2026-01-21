@@ -6,9 +6,12 @@ import { Footer } from "@/components/footer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ComingSoonDialog } from "@/components/coming-soon-dialog"
+import { CountryMatrixDialog } from "@/components/country-matrix-dialog"
 import Link from "next/link"
 import { ArrowLeft, Users, FileText, Calendar, ExternalLink, ChevronRight } from "lucide-react"
 import Image from "next/image"
+import ecosocMatrix from "@/lib/country-matrix/ecosoc.json"
 
 export function EcosocPage() {
   return (
@@ -154,36 +157,29 @@ export function EcosocPage() {
                     <CardTitle className="text-lg text-[#B22222]">Resources</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start bg-transparent border-gray-200 hover:bg-gray-50"
-                      asChild
-                    >
-                      <Link href="#">
+                    <ComingSoonDialog label="Background Guide">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-transparent border-gray-200 hover:bg-gray-50"
+                      >
                         <FileText className="h-4 w-4 mr-2" />
                         Background Guide
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start bg-transparent border-gray-200 hover:bg-gray-50"
-                      asChild
-                    >
-                      <Link href="#">
-                        <Users className="h-4 w-4 mr-2" />
-                        Country Matrix
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start bg-transparent border-gray-200 hover:bg-gray-50"
-                      asChild
-                    >
-                      <Link href="#">
+                      </Button>
+                    </ComingSoonDialog>
+                    <CountryMatrixDialog
+                      committeeName="ECOSOC"
+                      matrix={ecosocMatrix}
+                      buttonClassName="w-full justify-start bg-transparent border-gray-200 hover:bg-gray-50"
+                    />
+                    <ComingSoonDialog label="Position Paper Guide">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-transparent border-gray-200 hover:bg-gray-50"
+                      >
                         <Calendar className="h-4 w-4 mr-2" />
                         Position Paper Guide
-                      </Link>
-                    </Button>
+                      </Button>
+                    </ComingSoonDialog>
                   </CardContent>
                 </Card>
 
